@@ -1,0 +1,14 @@
+/* Shared mobile styles (max-width: 768px) */
+
+@media (max-width: 768px) {
+  .arco-modal {
+    max-width: calc(100vw - 32px) !important;
+    width: calc(100vw - 32px) !important;
+    margin: 16px auto !important;
+  }
+
+  .arco-modal-body {
+    max-height: calc(100vh - 180px);
+    overflow-y: auto;
+  }
+}

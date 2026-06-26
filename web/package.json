@@ -1,0 +1,33 @@
+{
+  "name": "anox-web",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@arco-design/color": "^0.4.0",
+    "@arco-design/web-vue": "^2.54.3",
+    "@codemirror/commands": "^6.10.4",
+    "@codemirror/lang-json": "^6.0.2",
+    "@codemirror/language": "^6.12.4",
+    "@codemirror/lint": "^6.9.7",
+    "@codemirror/state": "^6.7.0",
+    "@codemirror/view": "^6.43.3",
+    "axios": "^1.6.2",
+    "codemirror": "^6.0.2",
+    "echarts": "^5.4.3",
+    "pinia": "^2.1.7",
+    "vue": "^3.3.8",
+    "vue-echarts": "^6.6.1",
+    "vue-router": "^4.2.5"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^4.5.0",
+    "typescript": "^5.3.2",
+    "vite": "^5.0.0",
+    "vue-tsc": "^1.8.22"
+  }
+}
