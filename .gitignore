@@ -50,7 +50,7 @@ data/
 logs/
 test/
 describe.md
-logo.png
+/logo.png
 ui.design.txt
 
 # Environment files
