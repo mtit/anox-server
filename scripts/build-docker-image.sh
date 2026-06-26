@@ -4,11 +4,13 @@
 # 用法:
 #   ./scripts/build-docker-image.sh
 #   ANOX_IMAGE=anox-server:1.0.0 ./scripts/build-docker-image.sh
+#   GOPROXY=https://goproxy.cn ./scripts/build-docker-image.sh
 #
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 IMAGE="${ANOX_IMAGE:-anox-server:latest}"
+GOPROXY="${GOPROXY:-https://goproxy.cn}"
 
 cd "$ROOT_DIR"
 
@@ -18,9 +20,10 @@ if ! command -v docker >/dev/null 2>&1; then
 fi
 
 echo "==> Building image: ${IMAGE}"
+echo "==> GOPROXY: ${GOPROXY}"
 echo "==> Context: ${ROOT_DIR}"
 
-docker build -t "${IMAGE}" -f - . <<'EOF'
+docker build -t "${IMAGE}" --build-arg "GOPROXY=${GOPROXY}" -f - . <<'EOF'
 FROM node:20-alpine AS web-builder
 
 WORKDIR /src/web
@@ -33,6 +36,9 @@ RUN npx vite build
 
 
 FROM golang:1.24-alpine AS go-builder
+
+ARG GOPROXY=https://goproxy.cn
+ENV GOPROXY=${GOPROXY}
 
 WORKDIR /src
 
