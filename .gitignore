@@ -56,3 +56,7 @@ ui.design.txt
 # Environment files
 .env
 .env.local
+
+# Local Go build cache / temporary patches
+.gocache/
+tmp-anox-gateway.patch

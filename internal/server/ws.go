@@ -18,7 +18,7 @@ import (
 
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
-		return true // Allow all origins in development
+		return true
 	},
 }
 
@@ -28,9 +28,9 @@ type WSServer struct {
 	registryMgr  *registry.Manager
 	logCollector *logcenter.Collector
 	connections  sync.Map // instanceID -> *Node
+	watchers     sync.Map // conn -> struct{}
 }
 
-// NewWSServer creates a new WebSocket server
 func NewWSServer(
 	configStore *core.ConfigStore,
 	registryMgr *registry.Manager,
@@ -43,7 +43,6 @@ func NewWSServer(
 	}
 }
 
-// MountRoutes mounts WebSocket routes to the router
 func (ws *WSServer) MountRoutes(router *gin.Engine) {
 	router.GET("/ws", ws.handleWebSocket)
 }
@@ -55,10 +54,15 @@ func (ws *WSServer) handleWebSocket(c *gin.Context) {
 		return
 	}
 	defer conn.Close()
-	
+
 	var node *registry.Node
-	
-	// Main message loop
+	watchingServices := false
+	defer func() {
+		if watchingServices {
+			ws.watchers.Delete(conn)
+		}
+	}()
+
 	for {
 		_, message, err := conn.ReadMessage()
 		if err != nil {
@@ -67,21 +71,22 @@ func (ws *WSServer) handleWebSocket(c *gin.Context) {
 			}
 			break
 		}
-		
-		// Parse message
+
 		var msg map[string]interface{}
 		if err := json.Unmarshal(message, &msg); err != nil {
 			log.Printf("[WebSocket] Failed to parse message: %v", err)
 			continue
 		}
-		
+
 		msgType, ok := msg["type"].(string)
 		if !ok {
 			log.Printf("[WebSocket] Message without type field")
 			continue
 		}
-		
+
 		switch msgType {
+		case "watch_services":
+			watchingServices = ws.handleWatchServices(conn)
 		case "register":
 			node = ws.handleRegister(conn, msg)
 		case "ping":
@@ -96,11 +101,23 @@ func (ws *WSServer) handleWebSocket(c *gin.Context) {
 			log.Printf("[WebSocket] Unknown message type: %s", msgType)
 		}
 	}
-	
-	// Clean up on disconnect
+
 	if node != nil {
 		ws.registryMgr.Unregister(node.ID)
 	}
+}
+
+func (ws *WSServer) handleWatchServices(conn *websocket.Conn) bool {
+	ws.watchers.Store(conn, struct{}{})
+	if err := conn.WriteJSON(api.ServicesSnapshotMessage{
+		Type:     "services_snapshot",
+		Services: ws.registryMgr.GetAllServices(),
+	}); err != nil {
+		log.Printf("[WebSocket] Failed to send services snapshot: %v", err)
+		ws.watchers.Delete(conn)
+		return false
+	}
+	return true
 }
 
 func (ws *WSServer) handleRegister(conn *websocket.Conn, msg map[string]interface{}) *registry.Node {
@@ -109,8 +126,7 @@ func (ws *WSServer) handleRegister(conn *websocket.Conn, msg map[string]interfac
 		ws.sendError(conn, "register", "missing service_name")
 		return nil
 	}
-	
-	// Register the node
+
 	node := ws.registryMgr.Register(serviceName, conn)
 	ws.connections.Store(node.ID, node)
 
@@ -120,21 +136,13 @@ func (ws *WSServer) handleRegister(conn *websocket.Conn, msg map[string]interfac
 	if port := parseRegisterString(msg, "http_port"); port != "" {
 		node.HttpPort = port
 	}
-	
-	// Send success response
-	response := api.RegisterResponse{
-		Type:       "register_response",
-		InstanceID: node.ID,
-		Success:    true,
-	}
-	
+
+	response := api.RegisterResponse{Type: "register_response", InstanceID: node.ID, Success: true}
 	if err := conn.WriteJSON(response); err != nil {
 		log.Printf("[WebSocket] Failed to send register response: %v", err)
 	}
-	
-	log.Printf("[WebSocket] Service registered: %s, Instance: %s, HTTP: %s:%s",
-		serviceName, node.ID, node.HttpHost, node.HttpPort)
-	
+
+	log.Printf("[WebSocket] Service registered: %s, Instance: %s, HTTP: %s:%s", serviceName, node.ID, node.HttpHost, node.HttpPort)
 	return node
 }
 
@@ -158,10 +166,8 @@ func (ws *WSServer) handlePing(conn *websocket.Conn, node *registry.Node, msg ma
 		ws.sendError(conn, "ping", "not registered")
 		return
 	}
-	
-	// Parse heartbeat
+
 	var heartbeat api.HeartbeatMessage
-	
 	if v, ok := msg["cpu_cores"].(float64); ok {
 		heartbeat.CPUCores = int(v)
 	}
@@ -180,29 +186,22 @@ func (ws *WSServer) handlePing(conn *websocket.Conn, node *registry.Node, msg ma
 	if v, ok := msg["service_version"].(float64); ok {
 		heartbeat.ServiceVersion = int64(v)
 	}
-	
-	// Update node
+
 	node.UpdateHeartbeat(&heartbeat)
-	
-	// Check config versions and respond
-	response := api.HeartbeatResponse{
-		Type: "pong",
-	}
-	
-	// Get global config version
+	ws.NotifyServiceChange("upsert", node.ServiceInstance, len(ws.registryMgr.GetServiceNodes(node.ServiceName)))
+
+	response := api.HeartbeatResponse{Type: "pong"}
 	globalConfig, err := ws.configStore.Get(core.GlobalConfig)
 	if err == nil {
 		response.GlobalVersion = globalConfig.Version
 		response.NeedUpdateGlobal = globalConfig.Version != heartbeat.GlobalVersion
 	}
-	
-	// Get service config version
 	serviceConfig, err := ws.configStore.Get(node.ServiceName)
 	if err == nil {
 		response.ServiceVersion = serviceConfig.Version
 		response.NeedUpdateService = serviceConfig.Version != heartbeat.ServiceVersion
 	}
-	
+
 	if err := conn.WriteJSON(response); err != nil {
 		log.Printf("[WebSocket] Failed to send ping response: %v", err)
 	}
@@ -218,7 +217,6 @@ func (ws *WSServer) handleLogsBatch(conn *websocket.Conn, msg map[string]interfa
 	if !ok {
 		return
 	}
-
 	for _, logRaw := range logsRaw {
 		logMap, ok := logRaw.(map[string]interface{})
 		if !ok {
@@ -231,9 +229,7 @@ func (ws *WSServer) handleLogsBatch(conn *websocket.Conn, msg map[string]interfa
 
 func parseLogEntry(msg map[string]interface{}) api.LogEntry {
 	var entry api.LogEntry
-
 	entry.Time = parseLogTime(msg["time"])
-
 	if v, ok := msg["service"].(string); ok {
 		entry.Service = v
 	}
@@ -252,7 +248,6 @@ func parseLogEntry(msg map[string]interface{}) api.LogEntry {
 	if v, ok := msg["trace_id"].(string); ok {
 		entry.TraceID = v
 	}
-
 	if v, ok := msg["context"].(map[string]interface{}); ok {
 		entry.Context = make(map[string]string)
 		for k, val := range v {
@@ -261,7 +256,6 @@ func parseLogEntry(msg map[string]interface{}) api.LogEntry {
 			}
 		}
 	}
-
 	if v, ok := msg["stacks"].([]interface{}); ok {
 		for _, stack := range v {
 			if s, ok := stack.(string); ok {
@@ -269,7 +263,6 @@ func parseLogEntry(msg map[string]interface{}) api.LogEntry {
 			}
 		}
 	}
-
 	return entry
 }
 
@@ -291,49 +284,47 @@ func (ws *WSServer) handlePullConfig(conn *websocket.Conn, node *registry.Node, 
 		ws.sendError(conn, "pull_config", "missing service")
 		return
 	}
-	
+
 	config, err := ws.configStore.Get(service)
 	if err != nil {
 		ws.sendError(conn, "pull_config", err.Error())
 		return
 	}
-	
-	response := api.ConfigPullResponse{
-		Type:    "config_response",
-		Service: service,
-		Version: config.Version,
-		Values:  config.Values,
-	}
-	
+
+	response := api.ConfigPullResponse{Type: "config_response", Service: service, Version: config.Version, Values: config.Values}
 	if err := conn.WriteJSON(response); err != nil {
 		log.Printf("[WebSocket] Failed to send config response: %v", err)
 	}
 }
 
 func (ws *WSServer) sendError(conn *websocket.Conn, msgType, errorMsg string) {
-	response := map[string]interface{}{
-		"type":    msgType + "_error",
-		"error":   errorMsg,
-		"success": false,
-	}
-	
+	response := map[string]interface{}{"type": msgType + "_error", "error": errorMsg, "success": false}
 	if err := conn.WriteJSON(response); err != nil {
 		log.Printf("[WebSocket] Failed to send error response: %v", err)
 	}
 }
 
-// NotifyConfigChange notifies all instances of a service about config change
 func (ws *WSServer) NotifyConfigChange(service string, config *api.Config) {
-	message := api.ConfigUpdateMessage{
-		Type:    "config_update",
-		Service: service,
-		Version: config.Version,
-	}
-	
-	// If _global, notify all services
+	message := api.ConfigUpdateMessage{Type: "config_update", Service: service, Version: config.Version}
 	if service == core.GlobalConfig {
 		ws.registryMgr.BroadcastToAll(message)
 	} else {
 		ws.registryMgr.BroadcastToService(service, message)
 	}
+}
+
+func (ws *WSServer) NotifyServiceChange(event string, instance *api.ServiceInstance, instanceCount int) {
+	msg := api.ServiceEventMessage{Type: "service_event", Event: event, Service: instance.ServiceName, Instance: instance, Instances: instanceCount}
+	ws.watchers.Range(func(key, value interface{}) bool {
+		conn, ok := key.(*websocket.Conn)
+		if !ok {
+			return true
+		}
+		if err := conn.WriteJSON(msg); err != nil {
+			log.Printf("[WebSocket] Failed to notify watcher: %v", err)
+			ws.watchers.Delete(conn)
+			conn.Close()
+		}
+		return true
+	})
 }

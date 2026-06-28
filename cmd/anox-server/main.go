@@ -74,6 +74,7 @@ func main() {
 
 	// Create WebSocket server
 	wsServer := server.NewWSServer(configStore, registryMgr, logCollector)
+	registryMgr.SetOnChange(wsServer.NotifyServiceChange)
 
 	// Create HTTP server
 	httpServer := server.NewHTTPServer(
