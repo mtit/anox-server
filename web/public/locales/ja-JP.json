@@ -94,6 +94,8 @@
     "action": "アクション",
     "message": "メッセージ",
     "instance": "インスタンス",
+    "stacks": "スタック",
+    "context": "コンテキスト",
     "detailTitle": "ログ詳細",
     "emptyTitle": "ログデータがありません",
     "emptyDesc": "フィルターを設定して検索してください",

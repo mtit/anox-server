@@ -158,6 +158,7 @@
       :title="t('logs.detailTitle')"
       :width="760"
       :footer="false"
+      class="log-detail-modal"
     >
       <div class="log-detail">
         <div
@@ -376,8 +377,8 @@ const logDetailRows = computed(() => {
     { key: 'action', label: t('logs.action'), value: formatDetailValue(log.action) },
     { key: 'message', label: t('logs.message'), value: formatDetailValue(log.message) },
     { key: 'trace_id', label: 'trace_id', value: formatDetailValue(log.trace_id) },
-    { key: 'stacks', label: 'stacks', value: formatDetailValue(log.stacks) },
-    { key: 'context', label: 'context', value: formatDetailValue(log.context) },
+    { key: 'stacks', label: t('logs.stacks'), value: formatDetailValue(log.stacks) },
+    { key: 'context', label: t('logs.context'), value: formatDetailValue(log.context) },
   ]
 
   return rows.filter(row => row.value !== '')
@@ -740,7 +741,10 @@ onMounted(() => {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
+.log-detail-modal{
+  overflow: auto;
+  max-height: 50vh;
+}
 .log-detail {
   display: flex;
   flex-direction: column;

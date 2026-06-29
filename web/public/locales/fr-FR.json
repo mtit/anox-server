@@ -94,6 +94,8 @@
     "action": "Action",
     "message": "Message",
     "instance": "Instance",
+    "stacks": "Pile",
+    "context": "Contexte",
     "detailTitle": "Détails du journal",
     "emptyTitle": "Aucun journal",
     "emptyDesc": "Définissez les filtres et lancez une recherche",

@@ -94,6 +94,8 @@
     "action": "Action",
     "message": "Message",
     "instance": "Instance",
+    "stacks": "Stack",
+    "context": "Context",
     "detailTitle": "Log Details",
     "emptyTitle": "No Logs",
     "emptyDesc": "Set filters and search",
