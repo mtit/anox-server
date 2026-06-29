@@ -50,7 +50,6 @@ RUN go mod download
 COPY api/ ./api/
 COPY cmd/ ./cmd/
 COPY internal/ ./internal/
-COPY pkg/ ./pkg/
 
 COPY --from=web-builder /src/web/dist ./web/dist
 
@@ -117,8 +116,8 @@ docker run -d \\
   -e HOST=0.0.0.0 \\
   -e PORT=8848 \\
   -e PASS=your-password \\
-  -v anox-data:/app/data \\
-  -v anox-logs:/app/logs \\
+  -v /data/anox/data:/app/data \\
+  -v /data/anox/logs:/app/logs \\
   ${IMAGE}
 EXAMPLE
 echo ""
