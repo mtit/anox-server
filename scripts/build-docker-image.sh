@@ -3,13 +3,13 @@
 #
 # 用法:
 #   ./scripts/build-docker-image.sh
-#   ANOX_IMAGE=anox-server:1.0.0 ./scripts/build-docker-image.sh
+#   ANOX_IMAGE=mtit/anox-server:1.0.0 ./scripts/build-docker-image.sh
 #   GOPROXY=https://goproxy.cn ./scripts/build-docker-image.sh
 #
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-IMAGE="${ANOX_IMAGE:-anox-server:latest}"
+IMAGE="${ANOX_IMAGE:-mtit/anox-server:latest}"
 GOPROXY="${GOPROXY:-https://goproxy.cn}"
 
 cd "$ROOT_DIR"
