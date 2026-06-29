@@ -201,17 +201,6 @@ func (s *HTTPServer) handleUpdateConfig(c *gin.Context) {
 		return
 	}
 
-	// Merge with existing config
-	existing, err := s.configStore.Get(name)
-	if err == nil {
-		// Merge existing values
-		for k, v := range existing.Values {
-			if _, ok := req.Values[k]; !ok {
-				req.Values[k] = v
-			}
-		}
-	}
-
 	if err := s.configStore.Set(name, req.Values); err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
