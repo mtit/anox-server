@@ -297,7 +297,15 @@ func (ws *WSServer) handlePullConfig(conn *websocket.Conn, node *registry.Node, 
 
 	config, err := ws.configStore.Get(service)
 	if err != nil {
-		ws.sendError(conn, "pull_config", err.Error())
+		response := map[string]interface{}{
+			"type":    "pull_config_error",
+			"service": service,
+			"error":   err.Error(),
+			"success": false,
+		}
+		if err := conn.WriteJSON(response); err != nil {
+			log.Printf("[WebSocket] Failed to send config error response: %v", err)
+		}
 		return
 	}
 
