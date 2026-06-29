@@ -324,6 +324,17 @@ func (ws *WSServer) sendError(conn *websocket.Conn, msgType, errorMsg string) {
 
 func (ws *WSServer) NotifyConfigChange(service string, config *api.Config) {
 	message := api.ConfigUpdateMessage{Type: "config_update", Service: service, Version: config.Version}
+	ws.watchers.Range(func(key, value interface{}) bool {
+		conn, ok := key.(*websocket.Conn)
+		if !ok {
+			return true
+		}
+		if err := conn.WriteJSON(message); err != nil {
+			log.Printf("[WebSocket] Failed to notify config watcher: %v", err)
+			ws.watchers.Delete(conn)
+		}
+		return true
+	})
 	if service == core.GlobalConfig {
 		ws.registryMgr.BroadcastToAll(message)
 	} else {
