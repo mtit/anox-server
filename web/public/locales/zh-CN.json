@@ -93,6 +93,8 @@
     "level": "级别",
     "action": "动作",
     "message": "消息",
+    "instance": "实例",
+    "detailTitle": "日志详情",
     "emptyTitle": "暂无日志数据",
     "emptyDesc": "请设置筛选条件后查询",
     "filterRequired": "请选择服务、实例和日期",

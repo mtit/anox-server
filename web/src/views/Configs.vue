@@ -70,7 +70,7 @@
             </div>
             <div class="kv-body">
               <div
-                v-for="(value, key) in editingValues"
+                v-for="(_value, key) in editingValues"
                 :key="key"
                 class="kv-row"
               >
@@ -135,7 +135,7 @@
 <script setup lang="ts">
 import { ref, reactive, watch, onMounted } from 'vue'
 import { Message, Modal } from '@arco-design/web-vue'
-import { getConfigs, getConfig, updateConfig, deleteConfigKey, type Config } from '@/api'
+import { getConfigs, updateConfig, deleteConfigKey, type Config } from '@/api'
 import JsonCodeEditor from '@/components/JsonCodeEditor.vue'
 import { useIsMobile } from '@/composables/useIsMobile'
 import { useI18n } from '@/i18n'

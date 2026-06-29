@@ -93,6 +93,8 @@
     "level": "レベル",
     "action": "アクション",
     "message": "メッセージ",
+    "instance": "インスタンス",
+    "detailTitle": "ログ詳細",
     "emptyTitle": "ログデータがありません",
     "emptyDesc": "フィルターを設定して検索してください",
     "filterRequired": "サービス、インスタンス、日付を選択してください",

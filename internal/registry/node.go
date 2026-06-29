@@ -1,12 +1,13 @@
 package registry
 
 import (
+	"crypto/rand"
 	"fmt"
 	"sync"
 	"time"
 
-	"github.com/gorilla/websocket"
 	"anox/api"
+	"github.com/gorilla/websocket"
 )
 
 // Node represents a single service instance node
@@ -17,13 +18,15 @@ type Node struct {
 }
 
 // NewNode creates a new node
-func NewNode(serviceName string, conn *websocket.Conn) *Node {
+func NewNode(serviceName string, conn *websocket.Conn, httpHost, httpPort string) *Node {
 	return &Node{
 		ServiceInstance: &api.ServiceInstance{
 			ID:            generateInstanceID(serviceName),
 			ServiceName:   serviceName,
 			RegisteredAt:  time.Now(),
 			LastHeartbeat: time.Now(),
+			HttpHost:      httpHost,
+			HttpPort:      httpPort,
 			Conn:          conn,
 		},
 		conn: conn,
@@ -80,5 +83,22 @@ func (n *Node) SendMessage(msg interface{}) error {
 
 // generateInstanceID generates a unique instance ID
 func generateInstanceID(serviceName string) string {
-	return fmt.Sprintf("%s-%d", serviceName, time.Now().UnixNano())
+	return fmt.Sprintf("%s-%s%s", serviceName, time.Now().Format("20060102150405"), randomSuffix(6))
+}
+
+func randomSuffix(length int) string {
+	const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+
+	buf := make([]byte, length)
+	if _, err := rand.Read(buf); err != nil {
+		now := time.Now().UnixNano()
+		for i := range buf {
+			buf[i] = byte(now >> (i * 8))
+		}
+	}
+
+	for i, b := range buf {
+		buf[i] = chars[int(b)%len(chars)]
+	}
+	return string(buf)
 }

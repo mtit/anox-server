@@ -4,16 +4,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"sync"
 	"time"
 
-	"github.com/gin-gonic/gin"
-	"github.com/gorilla/websocket"
 	"anox/api"
 	"anox/internal/core"
 	"anox/internal/logcenter"
 	"anox/internal/registry"
+	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 )
 
 var upgrader = websocket.Upgrader{
@@ -127,15 +128,11 @@ func (ws *WSServer) handleRegister(conn *websocket.Conn, msg map[string]interfac
 		return nil
 	}
 
-	node := ws.registryMgr.Register(serviceName, conn)
-	ws.connections.Store(node.ID, node)
+	httpHost := remoteHostFromConn(conn)
+	httpPort := parseRegisterString(msg, "http_port")
 
-	if host := parseRegisterString(msg, "http_host"); host != "" {
-		node.HttpHost = host
-	}
-	if port := parseRegisterString(msg, "http_port"); port != "" {
-		node.HttpPort = port
-	}
+	node := ws.registryMgr.Register(serviceName, conn, httpHost, httpPort)
+	ws.connections.Store(node.ID, node)
 
 	response := api.RegisterResponse{Type: "register_response", InstanceID: node.ID, Success: true}
 	if err := conn.WriteJSON(response); err != nil {
@@ -144,6 +141,19 @@ func (ws *WSServer) handleRegister(conn *websocket.Conn, msg map[string]interfac
 
 	log.Printf("[WebSocket] Service registered: %s, Instance: %s, HTTP: %s:%s", serviceName, node.ID, node.HttpHost, node.HttpPort)
 	return node
+}
+
+func remoteHostFromConn(conn *websocket.Conn) string {
+	if conn == nil || conn.RemoteAddr() == nil {
+		return ""
+	}
+
+	addr := conn.RemoteAddr().String()
+	host, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		return addr
+	}
+	return host
 }
 
 func parseRegisterString(msg map[string]interface{}, key string) string {

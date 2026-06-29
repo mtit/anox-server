@@ -101,7 +101,6 @@ Anox/
 │   ├── registry/       # 服务注册中心
 │   ├── logcenter/      # 日志中心
 │   └── server/         # HTTP/WebSocket服务
-├── pkg/sdk/            # 客户端SDK
 ├── api/                # 公共协议定义
 ├── web/                # 前端项目（Vue3）
 ├── data/configs/       # 配置文件存储
@@ -111,7 +110,7 @@ Anox/
 ## 客户端SDK使用
 
 ```go
-import "anox/pkg/sdk"
+import sdk "github.com/mtit/anox-sdk"
 
 // 创建客户端
 client, err := sdk.NewClient(sdk.Config{

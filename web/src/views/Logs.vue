@@ -84,6 +84,7 @@
             v-for="log in paginatedLogs"
             :key="log.time + log.message"
             class="table-row"
+            @click="openLogDetail(log)"
           >
             <div class="td time-col">{{ formatTime(log.time) }}</div>
             <div class="td service-col">
@@ -105,6 +106,7 @@
           v-for="log in paginatedLogs"
           :key="log.time + log.message"
           class="log-card"
+          @click="openLogDetail(log)"
         >
           <div class="log-card-header">
             <div class="log-card-time">{{ formatTime(log.time) }}</div>
@@ -149,6 +151,25 @@
         />
       </div>
     </div>
+
+    <!-- Log Detail Modal -->
+    <a-modal
+      v-model:visible="showLogDetailModal"
+      :title="t('logs.detailTitle')"
+      :width="760"
+      :footer="false"
+    >
+      <div class="log-detail">
+        <div
+          v-for="row in logDetailRows"
+          :key="row.key"
+          class="log-detail-row"
+        >
+          <div class="log-detail-key">{{ row.label }}</div>
+          <div class="log-detail-value">{{ row.value }}</div>
+        </div>
+      </div>
+    </a-modal>
 
     <!-- Alert Config Modal -->
     <a-modal
@@ -300,6 +321,8 @@ const hours = ref<string[]>([])
 const logs = ref<LogEntry[]>([])
 const loading = ref(false)
 const showAlertModal = ref(false)
+const showLogDetailModal = ref(false)
+const selectedLog = ref<LogEntry | null>(null)
 
 const filterForm = reactive({
   service: '',
@@ -341,6 +364,25 @@ const paginatedLogs = computed(() => {
   return logs.value.slice(start, end)
 })
 
+const logDetailRows = computed(() => {
+  if (!selectedLog.value) return []
+
+  const log = selectedLog.value
+  const rows = [
+    { key: 'time', label: t('logs.time'), value: formatDetailValue(formatFullTime(log.time)) },
+    { key: 'service', label: t('logs.service'), value: formatDetailValue(log.service) },
+    { key: 'instance', label: t('logs.instance'), value: formatDetailValue(log.instance) },
+    { key: 'level', label: t('logs.level'), value: formatDetailValue(log.level) },
+    { key: 'action', label: t('logs.action'), value: formatDetailValue(log.action) },
+    { key: 'message', label: t('logs.message'), value: formatDetailValue(log.message) },
+    { key: 'trace_id', label: 'trace_id', value: formatDetailValue(log.trace_id) },
+    { key: 'stacks', label: 'stacks', value: formatDetailValue(log.stacks) },
+    { key: 'context', label: 'context', value: formatDetailValue(log.context) },
+  ]
+
+  return rows.filter(row => row.value !== '')
+})
+
 const getLevelClass = (level: string): string => {
   const map: Record<string, string> = {
     'Debug': 'level-debug',
@@ -359,6 +401,29 @@ const formatTime = (time: string): string => {
     minute: '2-digit',
     second: '2-digit',
   })
+}
+
+const formatFullTime = (time: string): string => {
+  return new Date(time).toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  })
+}
+
+const formatDetailValue = (value: unknown): string => {
+  if (value === undefined || value === null) return ''
+  if (Array.isArray(value)) return value.join('\n')
+  if (typeof value === 'object') return JSON.stringify(value, null, 2)
+  return String(value)
+}
+
+const openLogDetail = (log: LogEntry) => {
+  selectedLog.value = log
+  showLogDetailModal.value = true
 }
 
 const fetchServices = async () => {
@@ -608,6 +673,7 @@ onMounted(() => {
   padding: 12px 20px;
   border-bottom: 1px solid #f2f3f5;
   transition: background 0.2s;
+  cursor: pointer;
 }
 
 .table-row:hover {
@@ -673,6 +739,43 @@ onMounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.log-detail {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #e5e6eb;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.log-detail-row {
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1fr);
+  border-bottom: 1px solid #f2f3f5;
+}
+
+.log-detail-row:last-child {
+  border-bottom: none;
+}
+
+.log-detail-key {
+  padding: 10px 12px;
+  background: #f7f8fa;
+  color: #4e5969;
+  font-size: 13px;
+  font-weight: 500;
+  border-right: 1px solid #f2f3f5;
+  word-break: break-word;
+}
+
+.log-detail-value {
+  padding: 10px 12px;
+  color: #1d2129;
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .empty-state {
@@ -831,6 +934,19 @@ onMounted(() => {
   .logs-mobile {
     display: block;
     padding: 12px 16px;
+  }
+
+  .log-card {
+    cursor: pointer;
+  }
+
+  .log-detail-row {
+    grid-template-columns: 1fr;
+  }
+
+  .log-detail-key {
+    border-right: none;
+    border-bottom: 1px solid #f2f3f5;
   }
 
   .table-body {

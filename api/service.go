@@ -21,7 +21,8 @@ type ServiceInstance struct {
 	GlobalVersion  int64 `json:"global_version"`
 	ServiceVersion int64 `json:"service_version"`
 
-	// HTTP endpoint reported at registration (for gateway routing)
+	// HTTP endpoint for gateway routing. Host is inferred from the WebSocket
+	// connection; port is reported by the service at registration.
 	HttpHost string `json:"http_host"`
 	HttpPort string `json:"http_port"`
 
@@ -53,7 +54,6 @@ type HeartbeatResponse struct {
 type RegisterMessage struct {
 	Type        string `json:"type"`
 	ServiceName string `json:"service_name"`
-	HttpHost    string `json:"http_host"`
 	HttpPort    string `json:"http_port"`
 }
 

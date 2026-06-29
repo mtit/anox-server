@@ -93,6 +93,8 @@
     "level": "Niveau",
     "action": "Action",
     "message": "Message",
+    "instance": "Instance",
+    "detailTitle": "Détails du journal",
     "emptyTitle": "Aucun journal",
     "emptyDesc": "Définissez les filtres et lancez une recherche",
     "filterRequired": "Veuillez sélectionner le service, l'instance et la date",

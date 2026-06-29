@@ -173,7 +173,7 @@ const toggleService = (name: string) => {
 const fetchServices = async () => {
   try {
     const response = await getServices()
-    const newServices = response.data.services || []
+    const newServices: Service[] = response.data.services || []
     
     // Preserve expanded state and merge data to avoid UI flicker
     newServices.forEach(service => {

@@ -5,8 +5,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gorilla/websocket"
 	"anox/api"
+	"github.com/gorilla/websocket"
 )
 
 // Manager manages all registered service instances
@@ -35,7 +35,7 @@ func (m *Manager) SetOnChange(fn func(event string, instance *api.ServiceInstanc
 }
 
 // Register registers a new service instance
-func (m *Manager) Register(serviceName string, conn *websocket.Conn) *Node {
+func (m *Manager) Register(serviceName string, conn *websocket.Conn, httpHost, httpPort string) *Node {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -43,7 +43,7 @@ func (m *Manager) Register(serviceName string, conn *websocket.Conn) *Node {
 		m.services[serviceName] = make(map[string]*Node)
 	}
 
-	node := NewNode(serviceName, conn)
+	node := NewNode(serviceName, conn, httpHost, httpPort)
 	m.services[serviceName][node.ID] = node
 	instanceCount := len(m.services[serviceName])
 

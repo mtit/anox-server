@@ -93,6 +93,8 @@
     "level": "Level",
     "action": "Action",
     "message": "Message",
+    "instance": "Instance",
+    "detailTitle": "Log Details",
     "emptyTitle": "No Logs",
     "emptyDesc": "Set filters and search",
     "filterRequired": "Please select service, instance, and date",
