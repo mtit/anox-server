@@ -174,26 +174,8 @@ const fetchServices = async () => {
   try {
     const response = await getServices()
     const newServices: Service[] = response.data.services || []
-    
-    // Preserve expanded state and merge data to avoid UI flicker
-    newServices.forEach(service => {
-      const existingService = services.value.find(s => s.name === service.name)
-      if (existingService) {
-        // Update instance data while preserving the array reference for reactivity
-        service.instances?.forEach((instance: Instance) => {
-          const existingInstance = existingService.instances?.find(i => i.id === instance.id)
-          if (existingInstance) {
-            // Update existing instance properties
-            Object.assign(existingInstance, instance)
-          }
-        })
-      }
-    })
-    
-    // If first load or service list changed, replace entirely
-    if (services.value.length === 0 || newServices.length !== services.value.length) {
-      services.value = newServices
-    }
+
+    services.value = newServices
   } catch (error) {
     console.error('Failed to fetch services:', error)
   }

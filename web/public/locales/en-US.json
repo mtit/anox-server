@@ -58,7 +58,7 @@
     "create": "New",
     "selectConfig": "Select a Config File",
     "selectConfigDesc": "Choose a config from the list or create a new one",
-    "anoxRestartHint": "Restart anox-server after changing host, port, or pass",
+    "anoxRestartHint": "Restart anox-server after changing host or port; pass and secret take effect immediately",
     "modeKv": "Key-Value",
     "modeJson": "JSON",
     "keyName": "Key",

@@ -58,7 +58,7 @@
     "create": "新規",
     "selectConfig": "設定ファイルを選択",
     "selectConfigDesc": "リストから設定を選択するか、新規作成してください",
-    "anoxRestartHint": "host、port、pass を変更した場合は anox-server の再起動が必要です",
+    "anoxRestartHint": "host、port の変更後は anox-server の再起動が必要です。pass、secret は即時反映されます",
     "modeKv": "キー・値",
     "modeJson": "JSON",
     "keyName": "キー",

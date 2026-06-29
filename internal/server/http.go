@@ -5,22 +5,22 @@ import (
 	"os"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"anox/api"
 	"anox/internal/core"
 	"anox/internal/logcenter"
 	"anox/internal/registry"
+	"github.com/gin-gonic/gin"
 )
 
 // Server handles HTTP API requests
 type HTTPServer struct {
-	router        *gin.Engine
-	configStore   *core.ConfigStore
-	registryMgr   *registry.Manager
-	logStorage    *logcenter.Storage
-	logCollector  *logcenter.Collector
-	alertEngine   *logcenter.AlertEngine
-	anoxSettings  *core.AnoxSettings
+	router       *gin.Engine
+	configStore  *core.ConfigStore
+	registryMgr  *registry.Manager
+	logStorage   *logcenter.Storage
+	logCollector *logcenter.Collector
+	alertEngine  *logcenter.AlertEngine
+	anoxSettings *core.AnoxSettings
 }
 
 // NewHTTPServer creates a new HTTP server
@@ -33,7 +33,7 @@ func NewHTTPServer(
 	anoxSettings *core.AnoxSettings,
 ) *HTTPServer {
 	gin.SetMode(gin.ReleaseMode)
-	
+
 	s := &HTTPServer{
 		router:       gin.Default(),
 		configStore:  configStore,
@@ -43,7 +43,7 @@ func NewHTTPServer(
 		alertEngine:  alertEngine,
 		anoxSettings: anoxSettings,
 	}
-	
+
 	s.setupRoutes()
 	return s
 }
@@ -123,50 +123,10 @@ func (s *HTTPServer) Router() *gin.Engine {
 	return s.router
 }
 
-func (s *HTTPServer) authMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
-			c.JSON(401, gin.H{"error": "unauthorized"})
-			c.Abort()
-			return
-		}
-		
-		// Simple token auth - password is the token
-		if authHeader != s.anoxSettings.Pass {
-			c.JSON(401, gin.H{"error": "invalid credentials"})
-			c.Abort()
-			return
-		}
-		
-		c.Next()
-	}
-}
-
-func (s *HTTPServer) handleLogin(c *gin.Context) {
-	var req struct {
-		Password string `json:"password"`
-	}
-	
-	if err := c.BindJSON(&req); err != nil {
-		c.JSON(400, gin.H{"error": "invalid request"})
-		return
-	}
-	
-	if req.Password != s.anoxSettings.Pass {
-		c.JSON(401, gin.H{"error": "invalid password"})
-		return
-	}
-	
-	c.JSON(200, gin.H{
-		"token": s.anoxSettings.Pass,
-	})
-}
-
 func (s *HTTPServer) handleOverview(c *gin.Context) {
 	// Get system info
 	cpuCores, memTotal := getSystemInfo()
-	
+
 	c.JSON(200, gin.H{
 		"service_count":  s.registryMgr.GetTotalServiceCount(),
 		"instance_count": s.registryMgr.GetTotalInstanceCount(),
@@ -179,12 +139,12 @@ func (s *HTTPServer) handleOverview(c *gin.Context) {
 
 func (s *HTTPServer) handleSystemMetrics(c *gin.Context) {
 	cpuPercent, memUsed, memTotal := getSystemMetrics()
-	
+
 	c.JSON(200, gin.H{
-		"cpu_percent":    cpuPercent,
-		"memory_used_mb": memUsed,
+		"cpu_percent":     cpuPercent,
+		"memory_used_mb":  memUsed,
 		"memory_total_mb": memTotal,
-		"timestamp":      time.Now().Unix(),
+		"timestamp":       time.Now().Unix(),
 	})
 }
 
@@ -196,17 +156,17 @@ func (s *HTTPServer) handleListServices(c *gin.Context) {
 func (s *HTTPServer) handleGetService(c *gin.Context) {
 	name := c.Param("name")
 	nodes := s.registryMgr.GetServiceNodes(name)
-	
+
 	if len(nodes) == 0 {
 		c.JSON(404, gin.H{"error": "service not found"})
 		return
 	}
-	
+
 	var instances []*api.ServiceInstance
 	for _, node := range nodes {
 		instances = append(instances, node.ServiceInstance)
 	}
-	
+
 	c.JSON(200, gin.H{
 		"name":      name,
 		"instances": instances,
@@ -225,22 +185,22 @@ func (s *HTTPServer) handleGetConfig(c *gin.Context) {
 		c.JSON(404, gin.H{"error": "config not found"})
 		return
 	}
-	
+
 	c.JSON(200, gin.H{"config": config})
 }
 
 func (s *HTTPServer) handleUpdateConfig(c *gin.Context) {
 	name := c.Param("name")
-	
+
 	var req struct {
 		Values map[string]string `json:"values"`
 	}
-	
+
 	if err := c.BindJSON(&req); err != nil {
 		c.JSON(400, gin.H{"error": "invalid request"})
 		return
 	}
-	
+
 	// Merge with existing config
 	existing, err := s.configStore.Get(name)
 	if err == nil {
@@ -251,24 +211,24 @@ func (s *HTTPServer) handleUpdateConfig(c *gin.Context) {
 			}
 		}
 	}
-	
+
 	if err := s.configStore.Set(name, req.Values); err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	c.JSON(200, gin.H{"message": "config updated"})
 }
 
 func (s *HTTPServer) handleDeleteConfigKey(c *gin.Context) {
 	name := c.Param("name")
 	key := c.Param("key")
-	
+
 	if err := s.configStore.Delete(name, key); err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	c.JSON(200, gin.H{"message": "key deleted"})
 }
 
@@ -278,7 +238,7 @@ func (s *HTTPServer) handleLogServices(c *gin.Context) {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	c.JSON(200, gin.H{"services": services})
 }
 
@@ -288,31 +248,31 @@ func (s *HTTPServer) handleLogInstances(c *gin.Context) {
 		c.JSON(400, gin.H{"error": "service parameter required"})
 		return
 	}
-	
+
 	instances, err := s.logStorage.ListInstances(service)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	c.JSON(200, gin.H{"instances": instances})
 }
 
 func (s *HTTPServer) handleLogDates(c *gin.Context) {
 	service := c.Query("service")
 	instance := c.Query("instance")
-	
+
 	if service == "" || instance == "" {
 		c.JSON(400, gin.H{"error": "service and instance parameters required"})
 		return
 	}
-	
+
 	dates, err := s.logStorage.ListDates(service, instance)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	c.JSON(200, gin.H{"dates": dates})
 }
 
@@ -320,18 +280,18 @@ func (s *HTTPServer) handleLogHours(c *gin.Context) {
 	service := c.Query("service")
 	instance := c.Query("instance")
 	date := c.Query("date")
-	
+
 	if service == "" || instance == "" || date == "" {
 		c.JSON(400, gin.H{"error": "service, instance and date parameters required"})
 		return
 	}
-	
+
 	hours, err := s.logStorage.ListHours(service, instance, date)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	c.JSON(200, gin.H{"hours": hours})
 }
 
@@ -343,7 +303,7 @@ func (s *HTTPServer) handleSearchLogs(c *gin.Context) {
 		Hour     string `json:"hour"`
 		Keyword  string `json:"keyword"`
 	}
-	
+
 	if err := c.BindJSON(&req); err != nil {
 		c.JSON(400, gin.H{"error": "invalid request"})
 		return
@@ -359,7 +319,7 @@ func (s *HTTPServer) handleSearchLogs(c *gin.Context) {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	c.JSON(200, gin.H{"logs": logs})
 }
 
@@ -369,26 +329,26 @@ func (s *HTTPServer) handleGetAlertConfig(c *gin.Context) {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	c.JSON(200, gin.H{"config": config})
 }
 
 func (s *HTTPServer) handleUpdateAlertConfig(c *gin.Context) {
 	var config api.AlertConfig
-	
+
 	if err := c.BindJSON(&config); err != nil {
 		c.JSON(400, gin.H{"error": "invalid request"})
 		return
 	}
-	
+
 	if err := s.configStore.SaveAlertConfig(&config); err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	// Update alert engine
 	s.alertEngine.UpdateConfig(&config)
-	
+
 	c.JSON(200, gin.H{"message": "alert config updated"})
 }
 

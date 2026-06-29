@@ -2,6 +2,8 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import axios from 'axios'
 
+let responseInterceptorRegistered = false
+
 export const useAuthStore = defineStore('auth', () => {
   const token = ref<string>(localStorage.getItem('anox_token') || '')
 
@@ -13,7 +15,7 @@ export const useAuthStore = defineStore('auth', () => {
       token.value = response.data.token
       localStorage.setItem('anox_token', token.value)
       // Set default header for all requests
-      axios.defaults.headers.common['Authorization'] = token.value
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token.value}`
       return true
     } catch (error) {
       return false
@@ -28,7 +30,20 @@ export const useAuthStore = defineStore('auth', () => {
 
   function init() {
     if (token.value) {
-      axios.defaults.headers.common['Authorization'] = token.value
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token.value}`
+    }
+
+    if (!responseInterceptorRegistered) {
+      axios.interceptors.response.use(
+        response => response,
+        error => {
+          if (error.response?.status === 401) {
+            logout()
+          }
+          return Promise.reject(error)
+        },
+      )
+      responseInterceptorRegistered = true
     }
   }
 

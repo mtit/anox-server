@@ -58,7 +58,7 @@
     "create": "新建",
     "selectConfig": "选择配置文件",
     "selectConfigDesc": "从列表选择一个配置文件进行编辑，或创建新配置",
-    "anoxRestartHint": "修改 host、port、pass 后需重启 anox-server 才能生效",
+    "anoxRestartHint": "修改 host、port 后需重启 anox-server；修改 pass、secret 会实时生效",
     "modeKv": "键值对",
     "modeJson": "JSON",
     "keyName": "键名",

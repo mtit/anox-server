@@ -58,7 +58,7 @@
     "create": "Nouveau",
     "selectConfig": "Sélectionner un fichier de config",
     "selectConfigDesc": "Choisissez une config dans la liste ou créez-en une nouvelle",
-    "anoxRestartHint": "Redémarrez anox-server après modification de host, port ou pass",
+    "anoxRestartHint": "Redémarrez anox-server après modification de host ou port ; pass et secret prennent effet immédiatement",
     "modeKv": "Clé-valeur",
     "modeJson": "JSON",
     "keyName": "Clé",

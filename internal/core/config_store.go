@@ -1,6 +1,8 @@
 package core
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -29,9 +31,10 @@ type ConfigStore struct {
 
 // AnoxSettings represents Anox server settings
 type AnoxSettings struct {
-	Host string `json:"host"`
-	Port string `json:"port"`
-	Pass string `json:"pass"`
+	Host   string `json:"host"`
+	Port   string `json:"port"`
+	Pass   string `json:"pass"`
+	Secret string `json:"secret"`
 }
 
 // NewConfigStore creates a new config store
@@ -208,16 +211,18 @@ func (cs *ConfigStore) GetAnoxSettings() (*AnoxSettings, error) {
 	if err != nil {
 		// Return defaults
 		return &AnoxSettings{
-			Host: getEnvOrDefault("ANOX_HOST", "0.0.0.0"),
-			Port: getEnvOrDefault("ANOX_PORT", "8848"),
-			Pass: getEnvOrDefault("ANOX_PASS", "admin"),
+			Host:   getEnvOrDefault("ANOX_HOST", "0.0.0.0"),
+			Port:   getEnvOrDefault("ANOX_PORT", "8848"),
+			Pass:   getEnvOrDefault("ANOX_PASS", "admin"),
+			Secret: defaultAnoxSecret(),
 		}, nil
 	}
 
 	settings := &AnoxSettings{
-		Host: getEnvOrDefault("ANOX_HOST", config.Values["host"]),
-		Port: getEnvOrDefault("ANOX_PORT", config.Values["port"]),
-		Pass: getEnvOrDefault("ANOX_PASS", config.Values["pass"]),
+		Host:   getEnvOrDefault("ANOX_HOST", config.Values["host"]),
+		Port:   getEnvOrDefault("ANOX_PORT", config.Values["port"]),
+		Pass:   getEnvOrDefault("ANOX_PASS", config.Values["pass"]),
+		Secret: config.Values["secret"],
 	}
 
 	// Apply defaults if empty
@@ -230,6 +235,9 @@ func (cs *ConfigStore) GetAnoxSettings() (*AnoxSettings, error) {
 	if settings.Pass == "" {
 		settings.Pass = "admin"
 	}
+	if settings.Secret == "" {
+		settings.Secret = defaultAnoxSecret()
+	}
 
 	return settings, nil
 }
@@ -237,19 +245,21 @@ func (cs *ConfigStore) GetAnoxSettings() (*AnoxSettings, error) {
 // SaveAnoxSettings saves Anox server settings
 func (cs *ConfigStore) SaveAnoxSettings(settings *AnoxSettings) error {
 	values := map[string]string{
-		"host": settings.Host,
-		"port": settings.Port,
-		"pass": settings.Pass,
+		"host":   settings.Host,
+		"port":   settings.Port,
+		"pass":   settings.Pass,
+		"secret": settings.Secret,
 	}
 	return cs.UpdateValues(AnoxConfig, values)
 }
 
-// EnsureAnoxSettingsDefaults writes host/port/pass into anox.json when missing.
+// EnsureAnoxSettingsDefaults writes host/port/pass/secret into anox.json when missing.
 func (cs *ConfigStore) EnsureAnoxSettingsDefaults() error {
 	defaults := map[string]string{
-		"host": defaultAnoxHost(),
-		"port": defaultAnoxPort(),
-		"pass": defaultAnoxPass(),
+		"host":   defaultAnoxHost(),
+		"port":   defaultAnoxPort(),
+		"pass":   defaultAnoxPass(),
+		"secret": generateAnoxSecret(),
 	}
 
 	config, err := cs.Get(AnoxConfig)
@@ -301,13 +311,35 @@ func defaultAnoxPass() string {
 	return "admin"
 }
 
+func defaultAnoxSecret() string {
+	if v := os.Getenv("ANOX_SECRET"); v != "" {
+		return v
+	}
+	if v := os.Getenv("SECRET"); v != "" {
+		return v
+	}
+	return "anox-default-secret"
+}
+
+func generateAnoxSecret() string {
+	if v := defaultAnoxSecret(); v != "anox-default-secret" {
+		return v
+	}
+	buf := make([]byte, 32)
+	if _, err := rand.Read(buf); err != nil {
+		return defaultAnoxSecret()
+	}
+	return base64.RawURLEncoding.EncodeToString(buf)
+}
+
 // SyncEnvWithConfig syncs environment variables with anox config
 func (cs *ConfigStore) SyncEnvWithConfig() error {
 	host := os.Getenv("HOST")
 	port := os.Getenv("PORT")
 	pass := os.Getenv("PASS")
+	secret := os.Getenv("SECRET")
 
-	if host == "" && port == "" && pass == "" {
+	if host == "" && port == "" && pass == "" && secret == "" {
 		return nil // No env overrides
 	}
 
@@ -326,6 +358,9 @@ func (cs *ConfigStore) SyncEnvWithConfig() error {
 	}
 	if pass != "" {
 		config.Values["pass"] = pass
+	}
+	if secret != "" {
+		config.Values["secret"] = secret
 	}
 
 	// Check if we need to update
@@ -386,15 +421,15 @@ func (cs *ConfigStore) GetAlertConfig() (*api.AlertConfig, error) {
 // SaveAlertConfig saves alert configuration
 func (cs *ConfigStore) SaveAlertConfig(alertConfig *api.AlertConfig) error {
 	values := map[string]string{
-		"alert_enabled":       strconv.FormatBool(alertConfig.Enabled),
-		"alert_min_level":     string(alertConfig.MinLevel),
-		"alert_channels":      strings.Join(alertConfig.Channels, ","),
-		"alert_deduplicate":   strconv.FormatBool(alertConfig.Deduplicate),
-		"alert_dedup_window":  strconv.Itoa(alertConfig.DeduplicateWindow),
+		"alert_enabled":      strconv.FormatBool(alertConfig.Enabled),
+		"alert_min_level":    string(alertConfig.MinLevel),
+		"alert_channels":     strings.Join(alertConfig.Channels, ","),
+		"alert_deduplicate":  strconv.FormatBool(alertConfig.Deduplicate),
+		"alert_dedup_window": strconv.Itoa(alertConfig.DeduplicateWindow),
 		// Webhook URLs - simplified configuration
-		"wechat_url":          alertConfig.WechatURL,
-		"dingtalk_url":        alertConfig.DingtalkURL,
-		"feishu_url":          alertConfig.FeishuURL,
+		"wechat_url":   alertConfig.WechatURL,
+		"dingtalk_url": alertConfig.DingtalkURL,
+		"feishu_url":   alertConfig.FeishuURL,
 		// SMS configuration
 		"sms_provider":          alertConfig.SMSProvider,
 		"sms_access_key_id":     alertConfig.SMSAccessKeyID,
